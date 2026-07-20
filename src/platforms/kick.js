@@ -31,21 +31,6 @@ async function getStreamData(username) {
         const livestream = data?.livestream;
         const isLive = livestream && livestream.is_live === true;
 
-        let thumbnailUrl = null;
-        if (livestream?.thumbnail?.url) {
-            thumbnailUrl = livestream.thumbnail.url;
-        } else if (livestream?.thumbnail_url) {
-            thumbnailUrl = livestream.thumbnail_url;
-        } else if (livestream?.preview) {
-            thumbnailUrl = livestream.preview;
-        } else if (livestream?.thumbnail) {
-            thumbnailUrl = livestream.thumbnail;
-        }
-
-        if (thumbnailUrl) {
-            thumbnailUrl = `${thumbnailUrl}?t=${Date.now()}`;
-        }
-
         return {
             online: isLive,
             platform: "Kick",
@@ -55,7 +40,7 @@ async function getStreamData(username) {
             url: `https://kick.com/${username}`,
             category: livestream?.categories?.[0]?.name || "Sin categoría",
             viewers: livestream?.viewer_count ?? 0,
-            thumbnail: thumbnailUrl,
+            thumbnail: null,
             startedAt: livestream?.created_at || null,
         };
     } catch (error) {

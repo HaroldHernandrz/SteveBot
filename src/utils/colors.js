@@ -33,8 +33,8 @@ const PLATFORM_COLORS = {
 };
 
 const PLATFORM_EMOJI = {
-  kick: '<:Kicklogo:1525348185604751420>',
-  youtube: ':yt:',
+  kick: '<:Kicklogo:1519051667897848000>',
+  youtube: ':yt:713085584805068852',
 };
 
 module.exports = {

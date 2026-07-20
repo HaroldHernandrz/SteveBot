@@ -9,7 +9,7 @@ const path = require("path");
 const { PLATFORM_COLORS, PLATFORM_EMOJI } = require("../utils/colors");
 const { truncate } = require("../utils/formatter");
 
-const DEFAULT_BANNER_NAME = "360.jpg";
+const DEFAULT_BANNER_NAME = "InicioDirecto.jpg";
 const DEFAULT_BANNER_PATH = path.join(__dirname, "../assets/images", DEFAULT_BANNER_NAME);
 
 function createLiveEmbed(platform, streamData) {
@@ -36,15 +36,13 @@ function createLiveEmbed(platform, streamData) {
 
     const files = [];
 
-    if (streamData.thumbnail) {
-        embed.setImage(streamData.thumbnail);
-    } else if (fs.existsSync(DEFAULT_BANNER_PATH)) {
-        const bannerAttachment = new AttachmentBuilder(DEFAULT_BANNER_PATH).setName(DEFAULT_BANNER_NAME);
+    if (fs.existsSync(DEFAULT_BANNER_PATH)) {
+    const bannerAttachment = new AttachmentBuilder(DEFAULT_BANNER_PATH).setName(DEFAULT_BANNER_NAME);
 
-        files.push(bannerAttachment);
+    files.push(bannerAttachment);
 
-        embed.setImage(`attachment://${DEFAULT_BANNER_NAME}`);
-    }
+    embed.setImage(`attachment://${DEFAULT_BANNER_NAME}`);
+}
 
     embed
         .setFooter({
