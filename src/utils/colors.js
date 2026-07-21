@@ -28,17 +28,22 @@ const ANSI = {
 };
 
 const PLATFORM_COLORS = {
-  kick: 0x53fc18,      // Verde Kick
-  youtube: 0xff0000,   // Rojo YouTube
+    kick: 0x53FC18,
+    youtube: 0xFF0000,
 };
 
 const PLATFORM_EMOJI = {
-  kick: '<:Kicklogo:1519051667897848000>',
-  youtube: ':yt:713085584805068852',
+    kick: "<:Kicklogo:1519051667897848000>",
+    youtube: "<:yt:713085584805068852>",
+};
+
+const PLATFORM_REACTION = {
+    kick: "<:Kicklogo:1519051667897848000>",
+    youtube: "<:yt:713085584805068852>",
 };
 
 module.exports = {
-  ANSI,
-  PLATFORM_COLORS,
-  PLATFORM_EMOJI,
+    PLATFORM_COLORS,
+    PLATFORM_EMOJI,
+    PLATFORM_REACTION,
 };

@@ -7,6 +7,7 @@ const { config } = require("../config");
 const createKickLiveEmbed = require("../embeds/liveEmbed");
 const createKickOfflineEmbed = require("../embeds/offlineEmbed");
 const createYouTubeVideoEmbed = require("../embeds/youtubeVideoEmbed");
+const { PLATFORM_REACTION } = require("../utils/colors");
 
 /**
  * Obtiene el canal de Discord configurado
@@ -73,7 +74,22 @@ async function send(client, platform, streamData) {
 
         const message = await channel.send(messageData);
 
-        logger.success(`📨 [${platform.toUpperCase()}] Mensaje enviado: ${message.id}`);
+// Agregar reacción automáticamente
+const reaction = PLATFORM_REACTION[platform];
+
+if (reaction) {
+    try {
+        await message.react(reaction);
+    } catch (error) {
+        logger.warn(
+            `No se pudo agregar la reacción en ${platform}: ${error.message}`
+        );
+    }
+}
+
+logger.success(`📨 [${platform.toUpperCase()}] Mensaje enviado: ${message.id}`);
+
+return message.id;
 
         return message.id;
     } catch (error) {
