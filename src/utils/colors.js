@@ -37,12 +37,15 @@ const PLATFORM_EMOJI = {
     youtube: "<:yt:713085584805068852>",
 };
 
+const PLATFORM_REACTION = PLATFORM_EMOJI;
+
 const PLATFORM_REACTION = {
     kick: "<:Kicklogo:1519051667897848000>",
     youtube: "<:yt:713085584805068852>",
 };
 
 module.exports = {
+    ANSI,
     PLATFORM_COLORS,
     PLATFORM_EMOJI,
     PLATFORM_REACTION,
