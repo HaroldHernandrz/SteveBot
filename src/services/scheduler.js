@@ -1,36 +1,47 @@
 /**
- * Scheduler - Ejecuta una comprobación puntual de plataformas sin un intervalo activo
+ * Scheduler - Ejecuta comprobaciones periódicas
  */
 
-const checkAllPlatforms = require('./checker');
-const logger = require('../utils/logger');
-const { config } = require('../config');
+const checkAllPlatforms = require("./checker");
+const logger = require("../utils/logger");
+const { config } = require("../config");
 
-/**
- * Ejecuta una comprobación inmediata al iniciar
- * @param {import('discord.js').Client} client
- */
+let interval = null;
+
 async function start(client) {
-  logger.info('🤖 Iniciando comprobación puntual de plataformas...');
+    logger.info("🤖 Iniciando monitor...");
 
-  const enabledPlatforms = Object.keys(config.platforms)
-    .filter(p => config.platforms[p].enabled)
-    .map(p => p.toUpperCase());
+    const enabledPlatforms = Object.keys(config.platforms)
+        .filter((p) => config.platforms[p].enabled)
+        .map((p) => p.toUpperCase());
 
-  logger.info(`📡 Plataformas habilitadas: ${enabledPlatforms.join(', ')}`);
+    logger.info(`📡 Plataformas habilitadas: ${enabledPlatforms.join(", ")}`);
 
-  await checkAllPlatforms(client);
-  logger.info('ℹ️ Comprobación inicial finalizada');
+    // Primera comprobación
+    await checkAllPlatforms(client);
+
+    logger.info("ℹ️ Comprobación inicial finalizada");
+
+    // Comprobaciones periódicas
+    interval = setInterval(async () => {
+        try {
+            await checkAllPlatforms(client);
+        } catch (err) {
+            logger.error(err.message);
+        }
+    }, config.updateInterval);
 }
 
-/**
- * Detiene el scheduler
- */
 function stop() {
-  logger.info('📛 Comprobación puntual detenida');
+    if (interval) {
+        clearInterval(interval);
+        interval = null;
+    }
+
+    logger.info("📛 Scheduler detenido");
 }
 
 module.exports = {
-  start,
-  stop,
+    start,
+    stop,
 };
