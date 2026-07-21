@@ -36,13 +36,8 @@ const PLATFORM_EMOJI = {
     kick: "<:Kicklogo:1519051667897848000>",
     youtube: "<:yt:713085584805068852>",
 };
-
+// Las reacciones usan los mismos emojis
 const PLATFORM_REACTION = PLATFORM_EMOJI;
-
-const PLATFORM_REACTION = {
-    kick: "<:Kicklogo:1519051667897848000>",
-    youtube: "<:yt:713085584805068852>",
-};
 
 module.exports = {
     ANSI,
