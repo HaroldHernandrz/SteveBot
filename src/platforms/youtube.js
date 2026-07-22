@@ -20,26 +20,37 @@ const httpClient = axios.create({
 let channelCache = {
     avatar: null,
     name: null,
+    uploadsPlaylist: null,
 };
 
 /**
  * Obtiene la información del canal (solo una vez)
  */
 async function getChannelInfo(channelId) {
-    if (channelCache.avatar && channelCache.name) {
+    if (
+        channelCache.avatar &&
+        channelCache.name &&
+        channelCache.uploadsPlaylist
+    ) {
         return channelCache;
     }
 
     try {
         const { data } = await httpClient.get(
-            `${YOUTUBE_API_BASE}/channels?part=snippet&id=${channelId}&key=${config.platforms.youtube.apiKey}`
+            `${YOUTUBE_API_BASE}/channels?part=snippet,contentDetails&id=${channelId}&key=${config.platforms.youtube.apiKey}`
         );
 
-        const snippet = data.items?.[0]?.snippet || {};
+        const channel = data.items?.[0];
+
+        if (!channel) {
+            throw new Error("Canal no encontrado");
+        }
 
         channelCache = {
-            avatar: snippet.thumbnails?.default?.url || null,
-            name: snippet.title || "YouTube",
+            avatar: channel.snippet?.thumbnails?.default?.url || null,
+            name: channel.snippet?.title || "YouTube",
+            uploadsPlaylist:
+                channel.contentDetails?.relatedPlaylists?.uploads || null,
         };
 
         return channelCache;
@@ -49,20 +60,27 @@ async function getChannelInfo(channelId) {
         return {
             avatar: null,
             name: "YouTube",
+            uploadsPlaylist: null,
         };
     }
 }
 
 /**
- * Busca el último video subido en el canal
+ * Busca el último video subido utilizando la playlist de uploads
  */
 async function getLatestUpload(channelId) {
     try {
+        const channelInfo = await getChannelInfo(channelId);
+
+        if (!channelInfo.uploadsPlaylist) {
+            return null;
+        }
+
         const { data } = await httpClient.get(
-            `${YOUTUBE_API_BASE}/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=1&key=${config.platforms.youtube.apiKey}`
+            `${YOUTUBE_API_BASE}/playlistItems?part=snippet&playlistId=${channelInfo.uploadsPlaylist}&maxResults=1&key=${config.platforms.youtube.apiKey}`
         );
 
-        if (!data.items || data.items.length === 0) {
+        if (!data.items?.length) {
             return null;
         }
 
@@ -98,7 +116,7 @@ async function getStreamData(channelId) {
         }
 
         const snippet = latestVideo.snippet || {};
-        const videoId = latestVideo.id?.videoId;
+        const videoId = snippet.resourceId?.videoId;
 
         const thumbnail =
             snippet.thumbnails?.maxres?.url ||
@@ -112,7 +130,7 @@ async function getStreamData(channelId) {
         return {
             online: true,
             platform: "YouTube",
-            streamerName: snippet.channelTitle || channelInfo.name,
+            streamerName: channelInfo.name,
             avatar: channelInfo.avatar,
             title: snippet.title || "Nuevo video",
             url: `https://www.youtube.com/watch?v=${videoId}`,
