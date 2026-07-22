@@ -16,44 +16,50 @@ const httpClient = axios.create({
     },
 });
 
-/**
- * Resuelve el channelId real de YouTube a partir de un ID o username
- * @param {string} channelId
- * @returns {Promise<string>}
- */
-async function resolveChannelId(channelId) {
-    const youtubeApiKey = config.platforms.youtube.apiKey;
+// Cache de información del canal
+let channelCache = {
+    avatar: null,
+    name: null,
+};
 
-    if (channelId.startsWith("UC")) {
-        return channelId;
+/**
+ * Obtiene la información del canal (solo una vez)
+ */
+async function getChannelInfo(channelId) {
+    if (channelCache.avatar && channelCache.name) {
+        return channelCache;
     }
 
     try {
         const { data } = await httpClient.get(
-            `${YOUTUBE_API_BASE}/search?part=snippet&type=channel&q=${encodeURIComponent(channelId)}&maxResults=1&key=${youtubeApiKey}`
+            `${YOUTUBE_API_BASE}/channels?part=snippet&id=${channelId}&key=${config.platforms.youtube.apiKey}`
         );
 
-        if (!data.items || data.items.length === 0) {
-            throw new Error(`No se encontró canal de YouTube: ${channelId}`);
-        }
+        const snippet = data.items?.[0]?.snippet || {};
 
-        return data.items[0].snippet.channelId;
+        channelCache = {
+            avatar: snippet.thumbnails?.default?.url || null,
+            name: snippet.title || "YouTube",
+        };
+
+        return channelCache;
     } catch (error) {
-        logger.error(`Error resolviendo canal de YouTube: ${error.message}`);
-        throw error;
+        logger.error(`Error obteniendo información del canal: ${error.message}`);
+
+        return {
+            avatar: null,
+            name: "YouTube",
+        };
     }
 }
 
 /**
  * Busca el último video subido en el canal
- * @param {string} channelId
- * @returns {Promise<Object|null>}
  */
 async function getLatestUpload(channelId) {
     try {
-        const youtubeApiKey = config.platforms.youtube.apiKey;
         const { data } = await httpClient.get(
-            `${YOUTUBE_API_BASE}/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=1&key=${youtubeApiKey}`
+            `${YOUTUBE_API_BASE}/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=1&key=${config.platforms.youtube.apiKey}`
         );
 
         if (!data.items || data.items.length === 0) {
@@ -68,14 +74,11 @@ async function getLatestUpload(channelId) {
 }
 
 /**
- * Obtiene los datos del último video subido en YouTube
- * @param {string} channelId - Channel ID o username de YouTube
- * @returns {Promise<Object>} Datos normalizados del video
+ * Obtiene los datos del último video subido
  */
 async function getStreamData(channelId) {
     try {
-        const resolvedChannelId = await resolveChannelId(channelId);
-        const latestVideo = await getLatestUpload(resolvedChannelId);
+        const latestVideo = await getLatestUpload(channelId);
 
         if (!latestVideo) {
             return {
@@ -84,7 +87,7 @@ async function getStreamData(channelId) {
                 streamerName: "YouTube",
                 avatar: null,
                 title: null,
-                url: `https://www.youtube.com/channel/${resolvedChannelId}`,
+                url: `https://www.youtube.com/channel/${channelId}`,
                 category: null,
                 viewers: 0,
                 thumbnail: null,
@@ -96,6 +99,7 @@ async function getStreamData(channelId) {
 
         const snippet = latestVideo.snippet || {};
         const videoId = latestVideo.id?.videoId;
+
         const thumbnail =
             snippet.thumbnails?.maxres?.url ||
             snippet.thumbnails?.high?.url ||
@@ -103,20 +107,16 @@ async function getStreamData(channelId) {
             snippet.thumbnails?.default?.url ||
             null;
 
-        const channelResponse = await httpClient.get(
-            `${YOUTUBE_API_BASE}/channels?part=snippet&id=${resolvedChannelId}&key=${config.platforms.youtube.apiKey}`
-        );
-        const channelSnippet = channelResponse.data?.items?.[0]?.snippet || {};
-        const channelAvatar = channelSnippet.thumbnails?.default?.url || null;
+        const channelInfo = await getChannelInfo(channelId);
 
         return {
             online: true,
             platform: "YouTube",
-            streamerName: snippet.channelTitle || channelSnippet.title || "YouTube",
-            avatar: channelAvatar,
+            streamerName: snippet.channelTitle || channelInfo.name,
+            avatar: channelInfo.avatar,
             title: snippet.title || "Nuevo video",
             url: `https://www.youtube.com/watch?v=${videoId}`,
-            category: snippet.categoryId || "YouTube Video",
+            category: "YouTube",
             viewers: 0,
             thumbnail,
             videoId,
@@ -125,6 +125,7 @@ async function getStreamData(channelId) {
         };
     } catch (error) {
         logger.debug(`Error en YouTube uploads (${channelId}): ${error.message}`);
+
         return {
             online: false,
             platform: "YouTube",

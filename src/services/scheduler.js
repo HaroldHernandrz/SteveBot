@@ -1,12 +1,13 @@
 /**
- * Scheduler - Ejecuta comprobaciones periódicas
+ * Scheduler - Ejecuta comprobaciones periódicas por plataforma
  */
 
-const checkAllPlatforms = require("./checker");
+const { checkAllPlatforms, checkPlatform } = require("./checker");
 const logger = require("../utils/logger");
 const { config } = require("../config");
 
-let interval = null;
+let kickInterval = null;
+let youtubeInterval = null;
 
 async function start(client) {
     logger.info("🤖 Iniciando monitor...");
@@ -22,20 +23,42 @@ async function start(client) {
 
     logger.info("ℹ️ Comprobación inicial finalizada");
 
-    // Comprobaciones periódicas
-    interval = setInterval(async () => {
-        try {
-            await checkAllPlatforms(client);
-        } catch (err) {
-            logger.error(err.message);
-        }
-    }, config.updateInterval);
+    // Kick
+    if (config.platforms.kick.enabled) {
+        kickInterval = setInterval(async () => {
+            try {
+                await checkPlatform("kick", client);
+            } catch (err) {
+                logger.error(err.message);
+            }
+        }, config.updateInterval);
+
+        logger.info(`🟢 Kick cada ${config.updateInterval / 1000}s`);
+    }
+
+    // YouTube
+    if (config.platforms.youtube.enabled) {
+        youtubeInterval = setInterval(async () => {
+            try {
+                await checkPlatform("youtube", client);
+            } catch (err) {
+                logger.error(err.message);
+            }
+        }, 300000); // 5 minutos
+
+        logger.info("🔴 YouTube cada 5 minutos");
+    }
 }
 
 function stop() {
-    if (interval) {
-        clearInterval(interval);
-        interval = null;
+    if (kickInterval) {
+        clearInterval(kickInterval);
+        kickInterval = null;
+    }
+
+    if (youtubeInterval) {
+        clearInterval(youtubeInterval);
+        youtubeInterval = null;
     }
 
     logger.info("📛 Scheduler detenido");

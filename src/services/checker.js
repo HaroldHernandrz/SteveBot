@@ -214,5 +214,5 @@ async function checkAllPlatforms(client) {
 
 module.exports = checkAllPlatforms;
 module.exports.checkAllPlatforms = checkAllPlatforms;
+module.exports.checkPlatform = checkPlatform;
 module.exports.isNewLiveSession = isNewLiveSession;
-
