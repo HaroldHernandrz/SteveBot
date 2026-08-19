@@ -44,9 +44,9 @@ async function start(client) {
             } catch (err) {
                 logger.error(err.message);
             }
-        }, 300000); // 5 minutos
+        }, config.updateInterval);
 
-        logger.info("🔴 YouTube cada 5 minutos");
+        logger.info(`🔴 YouTube cada ${config.updateInterval / 1000}s`);
     }
 }
 
