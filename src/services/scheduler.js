@@ -8,6 +8,7 @@ const { config } = require("../config");
 
 let kickInterval = null;
 let youtubeInterval = null;
+let tiktokInterval = null;
 
 async function start(client) {
     logger.info("🤖 Iniciando monitor...");
@@ -48,6 +49,18 @@ async function start(client) {
 
         logger.info(`🔴 YouTube cada ${config.updateInterval / 1000}s`);
     }
+
+    if (config.platforms.tiktok.enabled) {
+        tiktokInterval = setInterval(async () => {
+            try {
+                await checkPlatform("tiktok", client);
+            } catch (err) {
+                logger.error(err.message);
+            }
+        }, config.updateInterval);
+
+        logger.info(`🎵 TikTok cada ${config.updateInterval / 1000}s`);
+    }
 }
 
 function stop() {
@@ -59,6 +72,11 @@ function stop() {
     if (youtubeInterval) {
         clearInterval(youtubeInterval);
         youtubeInterval = null;
+    }
+
+    if (tiktokInterval) {
+        clearInterval(tiktokInterval);
+        tiktokInterval = null;
     }
 
     logger.info("📛 Scheduler detenido");

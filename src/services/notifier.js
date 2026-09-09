@@ -7,6 +7,7 @@ const { config } = require("../config");
 const createKickLiveEmbed = require("../embeds/liveEmbed");
 const createKickOfflineEmbed = require("../embeds/offlineEmbed");
 const createYouTubeVideoEmbed = require("../embeds/youtubeVideoEmbed");
+const createTikTokVideoEmbed = require("../embeds/tiktokEmbed");
 const { PLATFORM_REACTION } = require("../utils/colors");
 
 /**
@@ -22,6 +23,10 @@ async function getChannel(client, platform) {
                 break;
 
             case "youtube":
+                channelId = config.discord.videosChannelId;
+                break;
+
+            case "tiktok":
                 channelId = config.discord.videosChannelId;
                 break;
 
@@ -51,13 +56,15 @@ async function send(client, platform, streamData) {
 
         const embed = platform === "youtube"
             ? createYouTubeVideoEmbed(streamData)
-            : createKickLiveEmbed(platform, streamData);
+            : platform === "tiktok"
+                ? createTikTokVideoEmbed(streamData)
+                : createKickLiveEmbed(platform, streamData);
 
         let roleId = null;
 
         if (platform === "kick") {
             roleId = config.discord.directosRoleId;
-        } else if (platform === "youtube") {
+        } else if (platform === "youtube" || platform === "tiktok") {
             roleId = config.discord.videosRoleId;
         }
 
@@ -108,6 +115,8 @@ async function edit(client, platform, messageId, streamData) {
 
         const embed = platform === "youtube"
             ? createYouTubeVideoEmbed(streamData)
+            : platform === "tiktok"
+                ? createTikTokVideoEmbed(streamData)
             : streamData.online
                 ? createKickLiveEmbed(platform, streamData)
                 : createKickOfflineEmbed(platform, streamData);
@@ -116,7 +125,7 @@ async function edit(client, platform, messageId, streamData) {
 
         if (platform === "kick") {
             roleId = config.discord.directosRoleId;
-        } else if (platform === "youtube") {
+        } else if (platform === "youtube" || platform === "tiktok") {
             roleId = config.discord.videosRoleId;
         }
 

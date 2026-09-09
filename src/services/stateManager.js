@@ -31,6 +31,14 @@ const DEFAULT_STATE = {
             lastUpdate: null,
             offlineCount: 0,
         },
+        tiktok: {
+            online: false,
+            messageId: null,
+            streamData: null,
+            startedAt: null,
+            lastUpdate: null,
+            offlineCount: 0,
+        },
     },
 };
 

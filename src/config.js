@@ -32,6 +32,10 @@ const config = {
             channelId: process.env.YOUTUBE_CHANNEL_ID || null,
             apiKey: process.env.YOUTUBE_API_KEY || null,
         },
+        tiktok: {
+            enabled: process.env.TIKTOK_USERNAME ? true : false,
+            username: process.env.TIKTOK_USERNAME || null,
+        },
     },
 
     // Intervalo de monitoreo en milisegundos
@@ -65,7 +69,7 @@ function validateConfig() {
         .map(([name]) => name);
 
     if (enabledPlatforms.length === 0) {
-        errors.push("Debe configurar al menos una plataforma: KICK_USERNAME o YOUTUBE_CHANNEL_ID+YOUTUBE_API_KEY");
+        errors.push("Debe configurar al menos una plataforma: KICK_USERNAME, YOUTUBE_CHANNEL_ID+YOUTUBE_API_KEY o TIKTOK_USERNAME");
     }
 
     if (errors.length > 0) {

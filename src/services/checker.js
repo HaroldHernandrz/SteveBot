@@ -9,7 +9,7 @@ const notifier = require("./notifier");
 
 /**
  * Obtiene el módulo de la plataforma indicada
- * @param {string} platform - kick, youtube
+ * @param {string} platform - kick, youtube, tiktok
  * @returns {Object}
  */
 function getPlatformModule(platform) {
@@ -74,6 +74,9 @@ async function checkPlatform(platform, client) {
             case "youtube":
                 credential = platformConfig.channelId;
                 break;
+            case "tiktok":
+                credential = platformConfig.username;
+                break;
         }
 
         if (!credential) {
@@ -84,7 +87,7 @@ async function checkPlatform(platform, client) {
         const streamData = await module.getStreamData(credential);
         const platformState = getPlatformState(platform);
 
-        if (platform === "youtube") {
+        if (platform === "youtube" || platform === "tiktok") {
         if (!streamData.online) {
         logger.debug(`⚫ [${platform.toUpperCase()}] No se encontró video nuevo`);
         return;
