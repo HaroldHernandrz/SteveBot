@@ -17,6 +17,24 @@ function getBrowserOptions() {
 		options.executablePath = browserPath;
 	}
 
+	if (process.env.TIKTOK_PROXY_SERVER) {
+		options.proxy = {
+			server: process.env.TIKTOK_PROXY_SERVER,
+		};
+
+		if (process.env.TIKTOK_PROXY_USERNAME) {
+			options.proxy.username = process.env.TIKTOK_PROXY_USERNAME;
+		}
+
+		if (process.env.TIKTOK_PROXY_PASSWORD) {
+			options.proxy.password = process.env.TIKTOK_PROXY_PASSWORD;
+		}
+
+		if (process.env.TIKTOK_PROXY_BYPASS) {
+			options.proxy.bypass = process.env.TIKTOK_PROXY_BYPASS;
+		}
+	}
+
 	return options;
 }
 
@@ -25,6 +43,10 @@ let checkInProgress = false;
 
 function getBrowser() {
 	if (!browserPromise) {
+		if (process.env.TIKTOK_PROXY_SERVER) {
+			logger.info("TikTok: proxy configurado para Chromium");
+		}
+
 		browserPromise = chromium.launch(getBrowserOptions()).catch((error) => {
 			browserPromise = null;
 			throw error;
@@ -168,4 +190,4 @@ async function getStreamData(username) {
 	}
 }
 
-module.exports = { getStreamData, parseProfileData, closeBrowser };
+module.exports = { getStreamData, parseProfileData, closeBrowser, getBrowserOptions };
