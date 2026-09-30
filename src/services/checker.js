@@ -95,6 +95,15 @@ async function checkPlatform(platform, client) {
 
         const lastVideoId = platformState.streamData?.videoId;
 
+        if (!lastVideoId) {
+            logger.info(`🧭 [${platform.toUpperCase()}] Último video guardado como referencia; no se enviará aviso al iniciar`);
+            updatePlatformState(platform, {
+                streamData,
+                lastUpdate: new Date().toISOString(),
+            });
+            return;
+        }
+
         if (streamData.videoId === lastVideoId) {
         logger.debug(`🧭 [${platform.toUpperCase()}] El último video ya fue notificado`);
         return;
