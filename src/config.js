@@ -55,11 +55,11 @@ function validateConfig() {
         errors.push("TOKEN (Discord Bot Token)");
     }
 
-    if (!config.discord.directosChannelId) {
+    if (config.platforms.kick.enabled && !config.discord.directosChannelId) {
         errors.push("DIRECTOS_CHANNEL_ID (ID del canal de directos)");
     }
 
-    if (!config.discord.videosChannelId) {
+    if ((config.platforms.youtube.enabled || config.platforms.tiktok.enabled) && !config.discord.videosChannelId) {
         errors.push("VIDEOS_CHANNEL_ID (ID del canal de videos)");
     }
 

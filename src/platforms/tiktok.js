@@ -14,10 +14,27 @@ function getBrowser() {
 			headless: false,
 			executablePath: CHROME_PATH,
 			args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
+		}).catch((error) => {
+			browserPromise = null;
+			throw error;
 		});
 	}
 
 	return browserPromise;
+}
+
+async function closeBrowser() {
+	if (!browserPromise) return;
+
+	const pendingBrowser = browserPromise;
+	browserPromise = null;
+
+	try {
+		const browser = await pendingBrowser;
+		if (browser.isConnected()) await browser.close();
+	} catch (error) {
+		logger.warn(`No se pudo cerrar Chromium de TikTok: ${error.message}`);
+	}
 }
 
 function findLatestItem(value, candidates = []) {
@@ -53,16 +70,18 @@ function parseProfileData(html) {
 async function getStreamData(username) {
 	const cleanUsername = String(username).replace(/^@/, "").trim();
 	const profileUrl = `https://www.tiktok.com/@${encodeURIComponent(cleanUsername)}`;
+	let page;
 
 	try {
 		const browser = await getBrowser();
-		const page = await browser.newPage({
+		page = await browser.newPage({
 			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
 		});
 
 		await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
 		await page.waitForFunction(
 			() => [...document.querySelectorAll("a")].some((link) => link.href.includes("/video/")),
+			null,
 			{ timeout: 30000 }
 		);
 
@@ -82,10 +101,8 @@ async function getStreamData(username) {
 			};
 		});
 
-		await page.close();
-
 		if (!item?.videoId) {
-			return { online: false, platform: "TikTok", streamerName: cleanUsername, url: profileUrl, videoId: null };
+			throw new Error("TikTok cargó el perfil, pero no se encontró ningún enlace de video");
 		}
 
 		return {
@@ -103,9 +120,15 @@ async function getStreamData(username) {
 			description: item.title,
 		};
 	} catch (error) {
-		logger.debug(`Error en TikTok (${cleanUsername}): ${error.message}`);
+		logger.error(`Error consultando TikTok @${cleanUsername}: ${error.message}`);
 		return { online: false, error: true, platform: "TikTok", streamerName: cleanUsername, url: profileUrl, videoId: null };
+	} finally {
+		if (page) {
+			await page.close().catch((error) => {
+				logger.warn(`No se pudo cerrar la página de TikTok: ${error.message}`);
+			});
+		}
 	}
 }
 
-module.exports = { getStreamData, parseProfileData };
+module.exports = { getStreamData, parseProfileData, closeBrowser };
