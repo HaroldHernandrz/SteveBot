@@ -1,20 +1,30 @@
 const { chromium } = require("playwright");
 const logger = require("../utils/logger");
 
-const CHROME_PATH = process.env.TIKTOK_BROWSER_PATH || (
-	process.platform === "win32"
-		? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-		: "/usr/bin/chromium"
-);
+function getBrowserOptions() {
+	const options = {
+		headless: false,
+		args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
+	};
+
+	const browserPath = process.env.TIKTOK_BROWSER_PATH || (
+		process.platform === "win32"
+			? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+			: null
+	);
+
+	if (browserPath) {
+		options.executablePath = browserPath;
+	}
+
+	return options;
+}
+
 let browserPromise = null;
 
 function getBrowser() {
 	if (!browserPromise) {
-		browserPromise = chromium.launch({
-			headless: false,
-			executablePath: CHROME_PATH,
-			args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-dev-shm-usage"],
-		}).catch((error) => {
+		browserPromise = chromium.launch(getBrowserOptions()).catch((error) => {
 			browserPromise = null;
 			throw error;
 		});
