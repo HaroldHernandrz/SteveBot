@@ -97,7 +97,10 @@ async function getStreamData(username) {
 		if (response && !response.ok()) {
 			throw new Error(`TikTok respondió HTTP ${response.status()}`);
 		}
-		await page.waitForSelector('a[href*="/video/"]', { timeout: 30000 });
+		await page.waitForSelector('a[href*="/video/"]', {
+			state: "attached",
+			timeout: 30000,
+		});
 
 		const item = await page.locator('a[href*="/video/"]').evaluateAll((links) => {
 			const link = links.find((candidate) => !candidate.innerText.includes("Anclado")) || links[0];
