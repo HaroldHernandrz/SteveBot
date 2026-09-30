@@ -99,10 +99,10 @@ async function getStreamData(username) {
 		}
 		await page.waitForSelector('a[href*="/video/"]', {
 			state: "attached",
-			timeout: 30000,
-		});
+			timeout: 12000,
+		}).catch(() => {});
 
-		const item = await page.locator('a[href*="/video/"]').evaluateAll((links) => {
+		let item = await page.locator('a[href*="/video/"]').evaluateAll((links) => {
 			const link = links.find((candidate) => !candidate.innerText.includes("Anclado")) || links[0];
 			if (!link) return null;
 
@@ -119,7 +119,26 @@ async function getStreamData(username) {
 		});
 
 		if (!item?.videoId) {
-			throw new Error("TikTok cargó el perfil, pero no se encontró ningún enlace de video");
+			const embeddedItem = parseProfileData(await page.content());
+			if (embeddedItem?.id) {
+				const author = embeddedItem.author || {};
+				const video = embeddedItem.video || {};
+				item = {
+					videoId: embeddedItem.id,
+					title: embeddedItem.desc || "Nuevo video",
+					url: `https://www.tiktok.com/@${encodeURIComponent(author.uniqueId || cleanUsername)}/video/${embeddedItem.id}`,
+					thumbnail: video.cover || video.originCover || video.dynamicCover || null,
+				};
+			}
+		}
+
+		if (!item?.videoId) {
+			const pageInfo = await page.evaluate(() => ({
+				title: document.title,
+				url: location.href,
+				text: document.body?.innerText?.slice(0, 300) || "",
+			}));
+			throw new Error(`Sin videos DOM ni JSON; HTTP ${response?.status() ?? "sin respuesta"}; página: ${JSON.stringify(pageInfo)}`);
 		}
 
 		return {
