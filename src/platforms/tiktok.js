@@ -21,6 +21,7 @@ function getBrowserOptions() {
 }
 
 let browserPromise = null;
+let checkInProgress = false;
 
 function getBrowser() {
 	if (!browserPromise) {
@@ -81,6 +82,10 @@ async function getStreamData(username) {
 	const cleanUsername = String(username).replace(/^@/, "").trim();
 	const profileUrl = `https://www.tiktok.com/@${encodeURIComponent(cleanUsername)}`;
 	let page;
+	if (checkInProgress) {
+		return { online: false, error: true, platform: "TikTok", streamerName: cleanUsername, url: profileUrl, videoId: null };
+	}
+	checkInProgress = true;
 
 	try {
 		const browser = await getBrowser();
@@ -88,12 +93,11 @@ async function getStreamData(username) {
 			userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
 		});
 
-		await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-		await page.waitForFunction(
-			() => [...document.querySelectorAll("a")].some((link) => link.href.includes("/video/")),
-			null,
-			{ timeout: 30000 }
-		);
+		const response = await page.goto(profileUrl, { waitUntil: "commit", timeout: 45000 });
+		if (response && !response.ok()) {
+			throw new Error(`TikTok respondió HTTP ${response.status()}`);
+		}
+		await page.waitForSelector('a[href*="/video/"]', { timeout: 30000 });
 
 		const item = await page.locator('a[href*="/video/"]').evaluateAll((links) => {
 			const link = links.find((candidate) => !candidate.innerText.includes("Anclado")) || links[0];
@@ -138,6 +142,7 @@ async function getStreamData(username) {
 				logger.warn(`No se pudo cerrar la página de TikTok: ${error.message}`);
 			});
 		}
+		checkInProgress = false;
 	}
 }
 
