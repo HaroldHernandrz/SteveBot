@@ -32,10 +32,6 @@ const config = {
             channelId: process.env.YOUTUBE_CHANNEL_ID || null,
             apiKey: process.env.YOUTUBE_API_KEY || null,
         },
-        tiktok: {
-            enabled: process.env.TIKTOK_USERNAME ? true : false,
-            username: process.env.TIKTOK_USERNAME || null,
-        },
     },
 
     // Intervalo de monitoreo en milisegundos
@@ -55,11 +51,11 @@ function validateConfig() {
         errors.push("TOKEN (Discord Bot Token)");
     }
 
-    if (config.platforms.kick.enabled && !config.discord.directosChannelId) {
+    if (!config.discord.directosChannelId) {
         errors.push("DIRECTOS_CHANNEL_ID (ID del canal de directos)");
     }
 
-    if ((config.platforms.youtube.enabled || config.platforms.tiktok.enabled) && !config.discord.videosChannelId) {
+    if (!config.discord.videosChannelId) {
         errors.push("VIDEOS_CHANNEL_ID (ID del canal de videos)");
     }
 
@@ -69,7 +65,7 @@ function validateConfig() {
         .map(([name]) => name);
 
     if (enabledPlatforms.length === 0) {
-        errors.push("Debe configurar al menos una plataforma: KICK_USERNAME, YOUTUBE_CHANNEL_ID+YOUTUBE_API_KEY o TIKTOK_USERNAME");
+        errors.push("Debe configurar al menos una plataforma: KICK_USERNAME o YOUTUBE_CHANNEL_ID+YOUTUBE_API_KEY");
     }
 
     if (errors.length > 0) {

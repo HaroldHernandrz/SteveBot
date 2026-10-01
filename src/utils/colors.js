@@ -30,13 +30,11 @@ const ANSI = {
 const PLATFORM_COLORS = {
     kick: 0x53FC18,
     youtube: 0xFF0000,
-    tiktok: 0x010101,
 };
 
 const PLATFORM_EMOJI = {
     kick: "<:Kicklogo:1519051667897848000>",
     youtube: "<:yt:713085584805068852>",
-    tiktok: "🎵",
 };
 // Las reacciones usan los mismos emojis
 const PLATFORM_REACTION = PLATFORM_EMOJI;
