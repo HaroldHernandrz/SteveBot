@@ -16,6 +16,7 @@ const MAX_ROLE_MAPPINGS = 20;
 const UNICODE_EMOJI_PATTERN =
     /[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Regional_Indicator}]|^[#*0-9]\uFE0F?\u20E3$/u;
 let panelsCache;
+const roleOperationLocks = new Map();
 
 const command = new SlashCommandBuilder()
     .setName("autoroles")
@@ -179,7 +180,7 @@ async function publishPanel(interaction) {
             ].filter(Boolean).join("\n\n")
         )
         .setThumbnail(interaction.client.user.displayAvatarURL())
-        .setFooter({ text: "Reacciona para obtener un rol. Quita tu reacción para perderlo." });
+        .setFooter({ text: "Elige un solo rol. Quita tu reacción para perderlo." });
 
     const message = await channel.send({ embeds: [embed] });
 
@@ -215,6 +216,12 @@ function reactionKey(reaction) {
         : `unicode:${reaction.emoji.name}`;
 }
 
+function findConflictingRole(member, panel, selectedRoleId) {
+    return panel.mappings.find(({ roleId }) =>
+        roleId !== selectedRoleId && member.roles.cache.has(roleId)
+    );
+}
+
 async function handleReaction(reaction, user, addRole) {
     if (user.bot) {
         return;
@@ -242,13 +249,40 @@ async function handleReaction(reaction, user, addRole) {
         return;
     }
 
-    const member = await guild.members.fetch(user.id);
-    if (addRole) {
-        await member.roles.add(role, "Autorol elegido mediante reacción");
-        logger.info(`Rol ${role.name} asignado a ${user.tag}`);
-    } else {
-        await member.roles.remove(role, "Autorol retirado al quitar la reacción");
-        logger.info(`Rol ${role.name} retirado a ${user.tag}`);
+    const operationKey = `${guild.id}:${user.id}`;
+    const previousOperation = roleOperationLocks.get(operationKey) || Promise.resolve();
+    const operation = previousOperation.catch(() => {}).then(async () => {
+        const member = await guild.members.fetch(user.id);
+
+        if (addRole) {
+            const conflictingRole = findConflictingRole(member, panel, role.id);
+            if (conflictingRole) {
+                try {
+                    await user.send(
+                        `Solo puedes tener un rol de este panel. Ya tienes **${conflictingRole.roleName}**, así que no te asigné **${role.name}**. Para elegir otro, quita primero la reacción de tu rol actual.`
+                    );
+                } catch (error) {
+                    logger.warn(`No se pudo avisar por mensaje directo a ${user.tag}: ${error.message}`);
+                }
+                logger.info(`Rol ${role.name} rechazado para ${user.tag}; ya tiene ${conflictingRole.roleName}`);
+                return;
+            }
+
+            await member.roles.add(role, "Autorol elegido mediante reacción");
+            logger.info(`Rol ${role.name} asignado a ${user.tag}`);
+        } else {
+            await member.roles.remove(role, "Autorol retirado al quitar la reacción");
+            logger.info(`Rol ${role.name} retirado a ${user.tag}`);
+        }
+    });
+
+    roleOperationLocks.set(operationKey, operation);
+    try {
+        await operation;
+    } finally {
+        if (roleOperationLocks.get(operationKey) === operation) {
+            roleOperationLocks.delete(operationKey);
+        }
     }
 }
 
@@ -310,6 +344,7 @@ function registerEvents(client) {
 
 module.exports = {
     command,
+    findConflictingRole,
     parseMappings,
     registerCommand,
     registerEvents,
