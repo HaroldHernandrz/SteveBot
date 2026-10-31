@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, ActivityType, Events } = require("discord.js"
 const { config, validateConfig } = require("./config");
 const logger = require("./utils/logger");
 const scheduler = require("./services/scheduler");
+const autoroles = require("./services/autoroles");
 
 // Validar configuración antes de iniciar
 try {
@@ -12,8 +13,13 @@ try {
 }
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessageReactions,
+    ],
 });
+
+autoroles.registerEvents(client);
 
 client.once(Events.ClientReady, async () => {
     logger.success(`👑 ${client.user.tag} conectado correctamente`);
@@ -22,6 +28,12 @@ client.once(Events.ClientReady, async () => {
     client.user.setActivity("Vigilando al Steve 👀", {
         type: ActivityType.Watching,
     });
+
+    try {
+        await autoroles.registerCommand(client);
+    } catch (error) {
+        logger.error(`No se pudo registrar /autoroles: ${error.message}`);
+    }
 
     // Iniciar la comprobación puntual inicial
     await scheduler.start(client);
