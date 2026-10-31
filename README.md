@@ -9,6 +9,9 @@ Un administrador puede ejecutar `/autoroles` y completar:
 - **canal**: canal de texto donde publicar el panel.
 - **titulo**: título que aparecerá en el embed.
 - **asociaciones**: una pareja de emoji y rol por línea.
+- **texto** (opcional): explicación que aparecerá debajo de las opciones.
+
+El embed usa automáticamente el avatar del bot como miniatura.
 
 Ejemplo:
 

@@ -41,6 +41,13 @@ const command = new SlashCommandBuilder()
             .setDescription("Una asociación por línea: emoji = @rol o ID del rol")
             .setMaxLength(1000)
             .setRequired(true)
+    )
+    .addStringOption((option) =>
+        option
+            .setName("texto")
+            .setDescription("Texto explicativo que aparecerá debajo de los roles")
+            .setMaxLength(3500)
+            .setRequired(false)
     );
 
 function readPanels() {
@@ -154,6 +161,7 @@ async function publishPanel(interaction) {
     const channel = interaction.options.getChannel("canal", true);
     const title = interaction.options.getString("titulo", true).trim();
     const mappings = parseMappings(interaction.options.getString("asociaciones", true), interaction.guild);
+    const text = interaction.options.getString("texto")?.trim();
 
     if (!title) {
         throw new Error("El título no puede estar vacío.");
@@ -165,8 +173,12 @@ async function publishPanel(interaction) {
         .setColor(0x5865f2)
         .setTitle(title)
         .setDescription(
-            mappings.map(({ emoji, roleId }) => `${emoji}  <@&${roleId}>`).join("\n")
+            [
+                mappings.map(({ emoji, roleId }) => `${emoji}  <@&${roleId}>`).join("\n"),
+                text,
+            ].filter(Boolean).join("\n\n")
         )
+        .setThumbnail(interaction.client.user.displayAvatarURL())
         .setFooter({ text: "Reacciona para obtener un rol. Quita tu reacción para perderlo." });
 
     const message = await channel.send({ embeds: [embed] });
