@@ -24,10 +24,7 @@ function getPlatformModule(platform) {
 function isNewLiveSession(platformState, streamData) {
     const previousStartedAt = platformState.streamData?.startedAt || platformState.startedAt || null;
     const currentStartedAt = streamData.startedAt || null;
-    const startedAtChanged = Boolean(currentStartedAt && previousStartedAt && currentStartedAt !== previousStartedAt);
-    const hadOfflineConfirmation = (platformState.offlineCount || 0) > 0;
-
-    return startedAtChanged || hadOfflineConfirmation;
+    return Boolean(currentStartedAt && previousStartedAt && currentStartedAt !== previousStartedAt);
 }
 
 function hasMeaningfulChanges(previousData, nextData) {
@@ -53,7 +50,7 @@ function hasMeaningfulChanges(previousData, nextData) {
  * @param {import('discord.js').Client} client
  * @returns {Promise<void>}
  */
-async function checkPlatform(platform, client) {
+async function checkPlatform(platform, client, isInitialCheck = false) {
     try {
         const platformConfig = config.platforms[platform];
         if (!platformConfig.enabled) {
@@ -123,6 +120,19 @@ async function checkPlatform(platform, client) {
         }
 
         if (streamData.online && !platformState.online) {
+            if (isInitialCheck && !platformState.streamData) {
+                logger.info(`🧭 [${platform.toUpperCase()}] Directo actual guardado como referencia; no se enviará aviso al iniciar`);
+                updatePlatformState(platform, {
+                    online: true,
+                    offlineCount: 0,
+                    messageId: null,
+                    streamData,
+                    startedAt: streamData.startedAt || new Date().toISOString(),
+                    lastUpdate: new Date().toISOString(),
+                });
+                return;
+            }
+
             logger.info(`🟢 [${platform.toUpperCase()}] ¡Nuevo directo! "${streamData.title}"`);
             const messageId = await notifier.send(client, platform, streamData);
             updatePlatformState(platform, {
@@ -211,13 +221,13 @@ async function checkPlatform(platform, client) {
  * Chequea TODAS las plataformas configuradas en paralelo
  * @param {import('discord.js').Client} client
  */
-async function checkAllPlatforms(client) {
+async function checkAllPlatforms(client, isInitialCheck = false) {
     const enabledPlatforms = Object.keys(config.platforms)
         .filter(p => config.platforms[p].enabled);
 
     // Ejecutar checks en paralelo
     await Promise.all(
-        enabledPlatforms.map(platform => checkPlatform(platform, client))
+        enabledPlatforms.map(platform => checkPlatform(platform, client, isInitialCheck))
     );
 }
 

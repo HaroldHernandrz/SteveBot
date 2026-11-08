@@ -2,6 +2,8 @@
 
 Bot de Discord que notifica directos de Kick y videos nuevos de YouTube, y permite publicar paneles de autoroles.
 
+Al iniciar, Kick guarda el directo que ya está activo como referencia y no vuelve a publicarlo. Los directos que comiencen después sí generan un aviso.
+
 ## Panel de autoroles
 
 Un administrador puede ejecutar `/autoroles` y completar:

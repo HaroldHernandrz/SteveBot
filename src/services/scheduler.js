@@ -19,7 +19,7 @@ async function start(client) {
     logger.info(`📡 Plataformas habilitadas: ${enabledPlatforms.join(", ")}`);
 
     // Primera comprobación
-    await checkAllPlatforms(client);
+    await checkAllPlatforms(client, true);
 
     logger.info("ℹ️ Comprobación inicial finalizada");
 
