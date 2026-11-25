@@ -4,8 +4,15 @@
 
 const logger = require("../utils/logger");
 const { config } = require("../config");
-const { getState, getPlatformState, updatePlatformState, resetPlatformState } = require("./stateManager");
+const { getPlatformState, updatePlatformState, resetPlatformState } = require("./stateManager");
 const notifier = require("./notifier");
+
+const OFFLINE_CONFIRMATION_MS = 5 * 60 * 1000;
+const OFFLINE_CONFIRMATION_COUNT = Math.max(
+    3,
+    Math.ceil(OFFLINE_CONFIRMATION_MS / config.updateInterval)
+);
+const checksInProgress = new Set();
 
 /**
  * Obtiene el módulo de la plataforma indicada
@@ -21,10 +28,13 @@ function getPlatformModule(platform) {
     }
 }
 
-function isNewLiveSession(platformState, streamData) {
-    const previousStartedAt = platformState.streamData?.startedAt || platformState.startedAt || null;
-    const currentStartedAt = streamData.startedAt || null;
-    return Boolean(currentStartedAt && previousStartedAt && currentStartedAt !== previousStartedAt);
+function hasConfirmedOffline(platformState, now = Date.now()) {
+    if ((platformState.offlineCount || 0) < OFFLINE_CONFIRMATION_COUNT) {
+        return false;
+    }
+
+    const offlineSince = Date.parse(platformState.offlineSinceAt || "");
+    return Number.isFinite(offlineSince) && now - offlineSince >= OFFLINE_CONFIRMATION_MS;
 }
 
 function hasMeaningfulChanges(previousData, nextData) {
@@ -51,6 +61,12 @@ function hasMeaningfulChanges(previousData, nextData) {
  * @returns {Promise<void>}
  */
 async function checkPlatform(platform, client, isInitialCheck = false) {
+    if (checksInProgress.has(platform)) {
+        logger.debug(`Se omite comprobación concurrente de ${platform}`);
+        return;
+    }
+
+    checksInProgress.add(platform);
     try {
         const platformConfig = config.platforms[platform];
         if (!platformConfig.enabled) {
@@ -113,81 +129,68 @@ async function checkPlatform(platform, client, isInitialCheck = false) {
     return;
 }
 
-        // Lógica para Kick en vivo
-        if (!streamData.online && !platformState.online) {
-            logger.debug(`⚫ ${platform} sigue desconectado`);
-            return;
-        }
+        // Kick timestamps can change during an ongoing live, so only a confirmed offline period ends a session.
+        if (streamData.online) {
+            let messageId = platformState.messageId || null;
 
-        if (streamData.online && !platformState.online) {
-            if (isInitialCheck && !platformState.streamData) {
-                logger.info(`🧭 [${platform.toUpperCase()}] Directo actual guardado como referencia; no se enviará aviso al iniciar`);
-                updatePlatformState(platform, {
-                    online: true,
-                    offlineCount: 0,
-                    messageId: null,
-                    streamData,
-                    startedAt: streamData.startedAt || new Date().toISOString(),
-                    lastUpdate: new Date().toISOString(),
-                });
-                return;
-            }
+            if (!platformState.online || (isInitialCheck && !messageId)) {
+                messageId = await notifier.findRecentLiveMessage(client, platform, streamData);
 
-            logger.info(`🟢 [${platform.toUpperCase()}] ¡Nuevo directo! "${streamData.title}"`);
-            const messageId = await notifier.send(client, platform, streamData);
-            updatePlatformState(platform, {
-                online: true,
-                offlineCount: 0,
-                messageId,
-                streamData,
-                startedAt: new Date().toISOString(),
-                lastUpdate: new Date().toISOString(),
-            });
-            return;
-        }
-
-        if (streamData.online && platformState.online) {
-            if (isNewLiveSession(platformState, streamData)) {
-                logger.info(`🟢 [${platform.toUpperCase()}] Nuevo directo detectado tras una sesión anterior`);
-                const messageId = await notifier.send(client, platform, streamData);
-                updatePlatformState(platform, {
-                    online: true,
-                    offlineCount: 0,
-                    messageId,
-                    streamData,
-                    startedAt: streamData.startedAt || new Date().toISOString(),
-                    lastUpdate: new Date().toISOString(),
-                });
-                return;
+                if (messageId) {
+                    logger.info(`🧭 [${platform.toUpperCase()}] Aviso activo recuperado: ${messageId}`);
+                } else if (!platformState.online && isInitialCheck) {
+                    logger.info(`🧭 [${platform.toUpperCase()}] Directo actual guardado como referencia; no se enviará un aviso duplicado al iniciar`);
+                } else if (!platformState.online) {
+                    logger.info(`🟢 [${platform.toUpperCase()}] ¡Nuevo directo! "${streamData.title}"`);
+                    messageId = await notifier.send(client, platform, streamData);
+                }
             }
 
             if (hasMeaningfulChanges(platformState.streamData, streamData)) {
                 logger.info(`🔄 [${platform.toUpperCase()}] Cambios detectados en el directo, actualizando mensaje`);
-                if (platformState.messageId) {
-                    await notifier.edit(client, platform, platformState.messageId, streamData);
+                if (messageId) {
+                    await notifier.edit(client, platform, messageId, streamData);
                 }
             } else {
                 logger.debug(`🧭 [${platform.toUpperCase()}] Sin cambios relevantes en el directo`);
             }
             updatePlatformState(platform, {
+                online: true,
                 offlineCount: 0,
+                offlineSinceAt: null,
+                messageId,
                 streamData,
+                startedAt: streamData.startedAt || platformState.startedAt || new Date().toISOString(),
                 lastUpdate: new Date().toISOString(),
             });
             return;
         }
 
         if (!streamData.online && streamData.error) {
+            if (platformState.online && platformState.offlineCount) {
+                updatePlatformState(platform, {
+                    offlineCount: 0,
+                    offlineSinceAt: null,
+                });
+            }
             logger.warn(`⚠️ [${platform.toUpperCase()}] Error al consultar la API de ${platform}, no se marcará como desconectado.`);
             return;
         }
 
         if (!streamData.online && platformState.online) {
             const offlineCount = (platformState.offlineCount || 0) + 1;
-            updatePlatformState(platform, { offlineCount });
+            const previousOfflineSince = Date.parse(platformState.offlineSinceAt || "");
+            const offlineSinceAt = Number.isFinite(previousOfflineSince)
+                ? platformState.offlineSinceAt
+                : new Date().toISOString();
+            updatePlatformState(platform, { offlineCount, offlineSinceAt });
 
-            if (offlineCount < 2) {
-                logger.warn(`⚠️ [${platform.toUpperCase()}] Posible desconexión temporal (#${offlineCount}) - esperando confirmación.`);
+            if (!hasConfirmedOffline({ ...platformState, offlineCount, offlineSinceAt })) {
+                if (offlineCount === 1) {
+                    logger.warn(`⚠️ [${platform.toUpperCase()}] Kick no detecta el directo; esperando hasta 5 minutos de confirmación antes de cerrarlo.`);
+                } else {
+                    logger.debug(`⚠️ [${platform.toUpperCase()}] Confirmación de desconexión ${offlineCount}/${OFFLINE_CONFIRMATION_COUNT}`);
+                }
                 return;
             }
 
@@ -214,6 +217,8 @@ async function checkPlatform(platform, client, isInitialCheck = false) {
         if (config.debug) {
             console.error(error);
         }
+    } finally {
+        checksInProgress.delete(platform);
     }
 }
 
@@ -234,4 +239,4 @@ async function checkAllPlatforms(client, isInitialCheck = false) {
 module.exports = checkAllPlatforms;
 module.exports.checkAllPlatforms = checkAllPlatforms;
 module.exports.checkPlatform = checkPlatform;
-module.exports.isNewLiveSession = isNewLiveSession;
+module.exports.hasConfirmedOffline = hasConfirmedOffline;

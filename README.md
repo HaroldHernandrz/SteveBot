@@ -2,7 +2,7 @@
 
 Bot de Discord que notifica directos de Kick y videos nuevos de YouTube, y permite publicar paneles de autoroles.
 
-Al iniciar, Kick guarda el directo que ya está activo como referencia y no vuelve a publicarlo. Los directos que comiencen después sí generan un aviso.
+Kick ignora cambios en la hora de inicio reportada mientras el directo sigue activo. Solo marca un stream como finalizado después de al menos 5 minutos y varias respuestas offline válidas; una respuesta online o un error de API reinicia la confirmación. Al iniciar, busca un aviso activo reciente en Discord para recuperarlo. Si Steve ya estaba en directo durante un reinicio y no se encuentra el aviso, lo guarda como referencia sin publicar otro; los directos que comiencen mientras el bot está funcionando sí se anuncian.
 
 ## Panel de autoroles
 

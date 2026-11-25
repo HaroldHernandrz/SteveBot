@@ -22,6 +22,7 @@ const DEFAULT_STATE = {
             startedAt: null,
             lastUpdate: null,
             offlineCount: 0,
+            offlineSinceAt: null,
         },
         youtube: {
             online: false,
@@ -30,6 +31,7 @@ const DEFAULT_STATE = {
             startedAt: null,
             lastUpdate: null,
             offlineCount: 0,
+            offlineSinceAt: null,
         },
     },
 };

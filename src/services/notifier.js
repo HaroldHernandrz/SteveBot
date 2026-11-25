@@ -42,6 +42,21 @@ async function getChannel(client, platform) {
     }
 }
 
+async function findRecentLiveMessage(client, platform, streamData) {
+    const channel = await getChannel(client, platform);
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const platformName = platform.charAt(0).toUpperCase() + platform.slice(1).toLowerCase();
+    const message = messages.find((candidate) =>
+        candidate.author?.id === client.user.id &&
+        candidate.embeds.some((embed) =>
+            embed.url === streamData.url &&
+            embed.footer?.text === platformName
+        )
+    );
+
+    return message?.id || null;
+}
+
 /**
  * Envía un nuevo mensaje
  */
@@ -146,6 +161,7 @@ async function edit(client, platform, messageId, streamData) {
 }
 
 module.exports = {
+    findRecentLiveMessage,
     send,
     edit,
 };
